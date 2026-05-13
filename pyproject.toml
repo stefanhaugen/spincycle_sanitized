@@ -71,6 +71,7 @@ ignore = [
     "F841",   # unused local variable
     "SIM105", # use contextlib.suppress instead of try/except/pass
     "SIM118", # use 'key in dict' instead of 'key in dict.keys()'
+    "UP038",  # use 'X | Y' in isinstance — purely stylistic
 ]
 "bootstrap_pip.py" = [
     "E402",   # imports below code — intentional for pip-wheel sys.path setup
