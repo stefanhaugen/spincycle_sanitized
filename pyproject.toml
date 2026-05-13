@@ -63,6 +63,19 @@ ignore = [
 
 [tool.ruff.lint.per-file-ignores]
 "tests/*" = ["F401", "F811"]  # allow unused imports/redefinitions in tests
+# Legacy files predating the lint standards — grandfathered exemptions.
+# New code in this repo should pass the full rule set.
+"app.py" = [
+    "B007",   # unused loop control variable
+    "B905",   # zip without explicit strict=
+    "F841",   # unused local variable
+    "SIM105", # use contextlib.suppress instead of try/except/pass
+    "SIM118", # use 'key in dict' instead of 'key in dict.keys()'
+]
+"bootstrap_pip.py" = [
+    "E402",   # imports below code — intentional for pip-wheel sys.path setup
+    "SIM105", # use contextlib.suppress
+]
 
 # ─────────────────────────────────────────────────────────────────
 # Pytest — test runner

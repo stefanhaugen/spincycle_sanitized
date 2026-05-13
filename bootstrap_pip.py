@@ -4,8 +4,9 @@ This script is called by SETUP_once.bat — do not run manually.
 It adds the bundled pip wheel to sys.path and installs pip + setuptools
 into the embedded Python's Lib/site-packages.
 """
-import sys
+
 import os
+import sys
 
 app_dir = os.path.dirname(os.path.abspath(__file__))
 packages_dir = os.path.join(app_dir, "packages")
@@ -26,9 +27,16 @@ sys.path.insert(0, pip_wheel)
 
 # Run pip install for pip + setuptools from the local wheel cache
 from pip._internal.cli.main import main as pip_main
-sys.exit(pip_main([
-    "install",
-    "--no-index",
-    "--find-links", packages_dir,
-    "pip", "setuptools",
-]))
+
+sys.exit(
+    pip_main(
+        [
+            "install",
+            "--no-index",
+            "--find-links",
+            packages_dir,
+            "pip",
+            "setuptools",
+        ]
+    )
+)
