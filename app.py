@@ -4,32 +4,26 @@ Author: Stefan Haugen
 Supports: Chemstation, MassHunter
 """
 
-import re
-
-import numpy as np
-import pandas as pd
-import streamlit as st
-
-# ── Pandas 3.0 compat: disable pyarrow string backend ────────
-# Pandas 3.0 defaults to ArrowStringArray which breaks .reshape(),
-# JSON roundtrip column names, 'in' checks, and Streamlit Arrow
-# serialization. This single flag restores pandas 2.x behavior.
-try:
-    pd.set_option("future.infer_string", False)
-except (pd.errors.OptionError, KeyError, AttributeError):
-    pass  # pandas version <2.1 does not include this option, and does not require it
+# ── Standard library imports ─────────────────────────────────
 import json
+import logging
 import os
+import re
 import sqlite3
 from datetime import datetime
 from io import BytesIO, StringIO
 
+# ── Third-party imports ──────────────────────────────────────
+import numpy as np
 import openpyxl
+import pandas as pd
+import streamlit as st
 
-# Pure utility functions live in spincycle_utils so they're importable
-# without Streamlit (used by the test suite, and potentially by future
-# callers like a CLI). That module is the single source of truth for
-# these helpers — do not redefine them here.
+# ── First-party imports ──────────────────────────────────────
+# spincycle_logging configures the root logger before any runtime code
+# that might log. spincycle_utils is the canonical home for pure helper
+# functions and regex patterns (also imported by tests).
+from spincycle_logging import setup_logging
 from spincycle_utils import (
     _normalize_dropbox_path,
     _sanitize_sheet_name,
@@ -40,6 +34,23 @@ from spincycle_utils import (
     extract_std_conc,
     strip_rep_suffix,
 )
+
+# ── Runtime configuration ────────────────────────────────────
+# Configure logging as the first runtime step so anything below that
+# emits a log message is routed through the configured handler. Tunable
+# via SPINCYCLE_LOG_LEVEL and SPINCYCLE_LOG_JSON environment variables.
+setup_logging()
+logger = logging.getLogger(__name__)
+
+# Pandas 3.0 compat: disable pyarrow string backend. Pandas 3.0 defaults
+# to ArrowStringArray which breaks .reshape(), JSON roundtrip column
+# names, 'in' checks, and Streamlit Arrow serialization. This single flag
+# restores pandas 2.x behavior. The except is benign on pandas <2.1
+# where the option doesn't exist yet.
+try:
+    pd.set_option("future.infer_string", False)
+except (pd.errors.OptionError, KeyError, AttributeError):
+    logger.debug("pd.set_option('future.infer_string') unavailable on this pandas")
 
 # ─────────────────────────────────────────────
 #  PAGE CONFIGURATION
@@ -80,7 +91,10 @@ def _resolve_dropbox_token() -> str | None:
             if tok:
                 return str(tok)
     except Exception:
-        pass
+        # Surface the failure for observability — most common cause is a
+        # malformed secrets.toml. Falling through to session_state means
+        # the app keeps working but logs explain why st.secrets was skipped.
+        logger.warning("Failed to read dropbox_token from st.secrets", exc_info=True)
     return st.session_state.get("_dropbox_token")
 
 
@@ -92,7 +106,7 @@ def _resolve_dropbox_dest() -> str:
             if v:
                 return _normalize_dropbox_path(str(v))
     except Exception:
-        pass
+        logger.warning("Failed to read dropbox_dest from st.secrets", exc_info=True)
     return _normalize_dropbox_path(DROPBOX_DEFAULT_DEST)
 
 
@@ -154,7 +168,9 @@ def _dbx_upload(token: str, folder: str, filename: str, data: bytes) -> str:
     try:
         client.files_create_folder_v2(folder_clean)
     except Exception:
-        pass
+        # 'Folder already exists' is the expected case — log at DEBUG so
+        # ops can still trace folder-creation issues without info-level spam.
+        logger.debug("Dropbox folder create skipped for %s", folder_clean, exc_info=True)
     full_path = f"{folder_clean}/{filename}"
     client.files_upload(data, full_path, mode=_dbx.files.WriteMode("add"))
     return full_path
@@ -612,7 +628,7 @@ def cached_parse_chemstation(file_bytes: bytes, _ver=_CACHE_VER) -> tuple:
             if pd.notna(v) and str(v).strip():
                 extracted_meta["Batch Path"] = str(v).strip()
     except Exception:
-        pass
+        logger.warning("ChemStation Batch Path extraction failed", exc_info=True)
 
     # ── Run Date — ChemStation auto-batches with the date embedded
     #    in the batch path as YYYY-MM-DD, e.g.
@@ -626,7 +642,9 @@ def cached_parse_chemstation(file_bytes: bytes, _ver=_CACHE_VER) -> tuple:
                 # Validate it's a real date — rejects e.g. 2026-13-99
                 extracted_meta["Run Date"] = pd.Timestamp(m.group(1)).strftime("%Y-%m-%d")
             except Exception:
-                pass
+                logger.warning(
+                    "ChemStation Run Date parse failed for token %r", m.group(1), exc_info=True
+                )
 
     data_df.drop(data_df.columns[:2], axis=1, inplace=True)
     labels_df.drop(labels_df.columns[:2], axis=1, inplace=True)
