@@ -11,11 +11,11 @@
 
 ## The problem
 
-Analytical chemistry labs export raw HPLC/MS results from instrument software (Agilent ChemStation, MassHunter) as Excel files that are inconsistently formatted, mix metadata with data, and require hours of manual cleanup before QC review — replicate averaging, calibration curve validation, LLOQ/ULOQ flagging, and CVS (continuing verification standard) checks.
+Analytical chemistry labs export raw HPLC/MS results from instrument software (Agilent ChemStation, MassHunter) as Excel files that are inconsistently formatted, mix metadata with data, and require hours of manual cleanup before QC review including replicate averaging, calibration curve validation, LLOQ/ULOQ flagging, and CVS (continuing verification standard) checks.
 
 Instrument PCs are typically locked-down (no admin rights, no internet) and run a single Windows OS image for years. Installing Python or third-party tools is not an option.
 
-**SpinCycle solves this by shipping as a self-contained, fully offline folder.** A one-time setup on any internet-connected machine bundles an embedded Python 3.11 distribution + all dependencies into the folder. After setup, the folder can be copied via USB or network share to any Windows machine — including air-gapped instrument PCs — and the Streamlit pipeline launches in the user's default browser with a double-click.
+**SpinCycle solves this by shipping as a self-contained, fully offline folder.** A one-time setup on any internet-connected machine bundles an embedded Python 3.11 distribution + all dependencies into the folder. After setup, the folder can be copied via USB or network share to any Windows machine  (including standalone instrument PCs)  and the Streamlit pipeline launches in the user's default browser with a double-click.
 
 ## Features
 
