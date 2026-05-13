@@ -1,0 +1,38 @@
+# SpinCycle local development convenience wrapper.
+#
+#   docker-compose up           # build + run
+#   docker-compose up --build   # force rebuild
+#   docker-compose down         # stop and remove
+#
+# For a one-off image build + run without compose, see the commands in
+# README.md or the Dockerfile header.
+
+services:
+  spincycle:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    image: spincycle:latest
+    container_name: spincycle
+    ports:
+      - "8501:8501"
+    environment:
+      # Tunable at run-time via:
+      #   SPINCYCLE_LOG_LEVEL=DEBUG docker-compose up
+      SPINCYCLE_LOG_LEVEL: ${SPINCYCLE_LOG_LEVEL:-INFO}
+      SPINCYCLE_LOG_JSON: ${SPINCYCLE_LOG_JSON:-}
+    # Optional: mount a local secrets.toml without baking it into the image.
+    # Uncomment if you want to pass Dropbox credentials.
+    # volumes:
+    #   - ./.streamlit/secrets.toml:/app/.streamlit/secrets.toml:ro
+    restart: unless-stopped
+    healthcheck:
+      test:
+        - CMD
+        - python
+        - -c
+        - "import urllib.request,sys; sys.exit(0 if urllib.request.urlopen('http://localhost:8501/_stcore/health', timeout=3).status == 200 else 1)"
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 20s

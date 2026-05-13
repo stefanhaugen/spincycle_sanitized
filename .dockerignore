@@ -1,0 +1,55 @@
+# Files and folders excluded from the Docker build context.
+# Smaller context = faster builds + smaller intermediate images.
+# This mirrors the spirit of .gitignore but specifically for docker build.
+
+# ── Git / version control ──────────────────────────────────────────
+.git/
+.github/
+.gitignore
+.gitattributes
+
+# ── Python tooling ─────────────────────────────────────────────────
+__pycache__/
+*.py[cod]
+*$py.class
+.venv/
+venv/
+.env
+.env.*
+.mypy_cache/
+.ruff_cache/
+.pytest_cache/
+.coverage
+.coverage.*
+htmlcov/
+coverage.xml
+
+# ── Editor / OS metadata ───────────────────────────────────────────
+.vscode/
+.idea/
+*.swp
+.DS_Store
+Thumbs.db
+
+# ── Project: not needed inside the image ───────────────────────────
+# Tests run in CI, not inside the runtime image.
+tests/
+# The embedded Windows Python distribution and wheel cache are for
+# the offline .bat workflow — irrelevant inside a Linux container.
+python/
+packages/
+# .bat files don't run on Linux.
+*.bat
+# Plain-text companion docs — README.md is shipped in the repo, not image.
+README_bestplacetostart.txt
+RUNBOOK.md
+
+# ── Build/CI artifacts ─────────────────────────────────────────────
+build/
+dist/
+*.egg-info/
+
+# ── Streamlit secrets — NEVER bake into an image ──────────────────
+.streamlit/secrets.toml
+secrets.toml
+.secrets.baseline
