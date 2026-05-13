@@ -26,6 +26,21 @@ from io import BytesIO, StringIO
 
 import openpyxl
 
+# Pure utility functions live in spincycle_utils so they're importable
+# without Streamlit (used by the test suite, and potentially by future
+# callers like a CLI). That module is the single source of truth for
+# these helpers — do not redefine them here.
+from spincycle_utils import (
+    _normalize_dropbox_path,
+    _sanitize_sheet_name,
+    classify_sample,
+    extract_cvs_conc,
+    extract_cvs_conc_masshunter,
+    extract_dilution,
+    extract_std_conc,
+    strip_rep_suffix,
+)
+
 # ─────────────────────────────────────────────
 #  PAGE CONFIGURATION
 # ─────────────────────────────────────────────
@@ -52,33 +67,9 @@ INSTRUMENT_TYPES = ["Chemstation", "MassHunter"]
 #  DROPBOX  —  group-folder push
 # ═══════════════════════════════════════════════════════════════
 # Paste your group Dropbox folder path here.
-# pasted from a browser (https://www.dropbox.com/home/...) are auto-
-# normalized by _normalize_dropbox_path() below.
+# URLs pasted from a browser (https://www.dropbox.com/home/...) are
+# auto-normalized by _normalize_dropbox_path() (imported from spincycle_utils).
 DROPBOX_DEFAULT_DEST = "/Analytical"
-
-
-def _normalize_dropbox_path(path: str) -> str:
-    """Accept various Dropbox path formats and return /folder form.
-
-    Handles:
-      'https://www.dropbox.com/home/Apps/Analytical' → '/Apps/Analytical'
-      '/Analytical'                                   → '/Analytical'
-      'Analytical'                                    → '/Analytical'
-      ''                                              → '/'
-    """
-    if not path:
-        return "/"
-    p = path.strip()
-    if p.startswith("http"):
-        m = re.search(r"/home(/.+)?$", p)
-        if m:
-            p = m.group(1) or "/"
-        else:
-            m = re.search(r"/scl/fo/[^/]+/[^/]+(/.+)?$", p)
-            p = m.group(1) if m else "/"
-    if not p.startswith("/"):
-        p = "/" + p
-    return p.rstrip("/") or "/"
 
 
 def _resolve_dropbox_token() -> str | None:
@@ -314,19 +305,10 @@ INSTRUMENT_NAMES = [
     "Rocket",
 ]
 
-# FIX: \b fails when std/cvs is preceded by _ (both are word chars, no boundary).
-# Use (?:^|[_\-\s]) lookbehind-style alternation to anchor on start, _, -, or space.
-STD_PATTERN = re.compile(r"(?<=[_\-])(\d+\.?\d*)(?![xX\d.])")
-CVS_PATTERN = re.compile(r"(?:^|[_\-\s])cvs[_\-]?([\d\.]+)", re.IGNORECASE)
-# MassHunter-specific: spike concentration regex.
-# MassHunter sample names follow `cvs<idx>_<conc>(ppm)?` (e.g. DKmix_cvs1_5ppm
-# → CVS injection #1 at 5 ppm). The Chemstation CVS_PATTERN would capture the
-# index (1), not the spike concentration. This pattern captures the second
-# numeric token. Falls back to CVS_PATTERN behavior if no _<conc> tail exists.
-CVS_PATTERN_MASSHUNTER = re.compile(r"(?:^|[_\-\s])cvs\d+[_\-]([\d\.]+)(?:\s*ppm)?", re.IGNORECASE)
-# FIX: lookahead replaces \b — \b silently fails when anything follows x (e.g. _10x_rep1)
-# Requires dil token be preceded by _/- AND followed by _/-, whitespace, or end-of-string
-DIL_PATTERN = re.compile(r"(?<=[_\-])(\d+\.?\d*)[xX](?=[_\-\s]|$)", re.IGNORECASE)
+# STD_PATTERN / CVS_PATTERN / CVS_PATTERN_MASSHUNTER / DIL_PATTERN are
+# imported from spincycle_utils — they live there so the test suite can
+# import them without dragging in Streamlit. See spincycle_utils.py for
+# the regex definitions and the rationale comments.
 
 # ─────────────────────────────────────────────
 #  SESSION STATE
@@ -369,59 +351,10 @@ def safe_read_json(json_str, **kwargs):
 # ═══════════════════════════════════════════════════════════════
 #  PURE UTILITIES
 # ═══════════════════════════════════════════════════════════════
-
-
-def classify_sample(name: str) -> str:
-    n = str(name).lower()
-    # Simple substring match — any name containing std_ or std- → STD
-    if "std_" in n or "std-" in n or n.startswith("std"):
-        return "STD"
-    if "cvs_" in n or "cvs-" in n or n.startswith("cvs"):
-        return "CVS"
-    if "blank" in n:
-        return "Blank"
-    return "Sample"
-
-
-def extract_std_conc(name: str):
-    matches = STD_PATTERN.findall(str(name))
-    return float(matches[-1]) if matches else np.nan
-
-
-def extract_cvs_conc(name: str):
-    m = CVS_PATTERN.search(str(name))
-    return float(m.group(1)) if m else np.nan
-
-
-def extract_cvs_conc_masshunter(name: str):
-    """MassHunter-only CVS concentration extractor.
-
-    Pulls the SPIKE concentration from names like 'DKmix_cvs1_5ppm' → 5.0
-    (the cvs index '1' is ignored). Falls back to the Chemstation regex
-    if no `cvs<idx>_<conc>` pattern is found, so names like 'cvs_5ppm' or
-    'cvs5' still parse correctly.
-    """
-    s = str(name)
-    m = CVS_PATTERN_MASSHUNTER.search(s)
-    if m:
-        try:
-            return float(m.group(1))
-        except ValueError:
-            pass
-    # Fall back to the generic Chemstation pattern
-    m2 = CVS_PATTERN.search(s)
-    return float(m2.group(1)) if m2 else np.nan
-
-
-def extract_dilution(name: str):
-    m = DIL_PATTERN.search(str(name))
-    return float(m.group(1)) if m else 1.0
-
-
-def clean_name(name: str) -> str:
-    s = DIL_PATTERN.sub("", str(name))
-    s = re.sub(r"[_\-]{2,}", "_", s)  # collapse double _/- left after removing dil token
-    return s.strip("_- ").strip()
+# classify_sample, extract_std_conc, extract_cvs_conc,
+# extract_cvs_conc_masshunter, extract_dilution, clean_name
+# are imported from spincycle_utils above. Everything below this point
+# in this section is Streamlit/pandas-aware and stays here.
 
 
 def add_rep_suffix(df: pd.DataFrame) -> pd.DataFrame:
@@ -432,16 +365,6 @@ def add_rep_suffix(df: pd.DataFrame) -> pd.DataFrame:
         ~mask, df["Sample Name"] + "_rep" + (counts + 1).astype(str)
     )
     return df
-
-
-_REP_SUFFIX_RE = re.compile(r"_rep\d+$")
-
-
-def strip_rep_suffix(name) -> str:
-    """Inverse of add_rep_suffix's appended _repN. Returns the base sample
-    name. Used by CVS analyte assignment so a single assignment row applies
-    to every rep of the same injection."""
-    return _REP_SUFFIX_RE.sub("", str(name))
 
 
 def inject_meta(df: pd.DataFrame, meta: dict) -> pd.DataFrame:
@@ -488,19 +411,7 @@ def get_analyte_pairs(df: pd.DataFrame) -> list:
 # ═══════════════════════════════════════════════════════════════
 #  LLOQ / ULOQ  HELPER
 # ═══════════════════════════════════════════════════════════════
-
-
-def flag_lloq_uloq(value, lloq, uloq):
-    """Return flag string for a measured value vs LLOQ/ULOQ."""
-    try:
-        v = float(value)
-        if pd.notna(lloq) and v < float(lloq):
-            return "< LLOQ"
-        if pd.notna(uloq) and v > float(uloq):
-            return "> ULOQ"
-        return "In Range"
-    except (TypeError, ValueError):
-        return ""
+# flag_lloq_uloq is imported from spincycle_utils above.
 
 
 def decide_cell_style(
@@ -2258,20 +2169,7 @@ def build_excel(
     return output.getvalue()
 
 
-def _sanitize_sheet_name(name: str, used: set | None = None) -> str:
-    """Excel sheet names: ≤31 chars, no `: \\ / ? * [ ]`, must be unique."""
-    used = used if used is not None else set()
-    safe = re.sub(r"[:\\/?*\[\]]", "_", str(name))[:31].strip()
-    if not safe:
-        safe = "sheet"
-    candidate = safe
-    i = 1
-    while candidate in used:
-        suffix = f"_{i}"
-        candidate = safe[: 31 - len(suffix)] + suffix
-        i += 1
-    used.add(candidate)
-    return candidate
+# _sanitize_sheet_name is imported from spincycle_utils above.
 
 
 def build_batch_excel(
