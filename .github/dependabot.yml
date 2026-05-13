@@ -1,0 +1,44 @@
+# Dependabot configuration for SpinCycle.
+# Opens automatic PRs when dependencies have new versions or security patches.
+# Docs: https://docs.github.com/en/code-security/dependabot/dependabot-version-updates
+
+version: 2
+updates:
+  # ─────────────────────────────────────────────────────────────
+  # Python dependencies (requirements.txt + requirements-dev.txt)
+  # ─────────────────────────────────────────────────────────────
+  - package-ecosystem: "pip"
+    directory: "/"
+    schedule:
+      interval: "weekly"
+      day: "monday"
+      time: "09:00"
+    open-pull-requests-limit: 5
+    labels:
+      - "dependencies"
+      - "python"
+    commit-message:
+      prefix: "deps"
+      include: "scope"
+    groups:
+      # Batch minor + patch updates into a single PR per group to reduce noise.
+      # Major version bumps get their own PRs for individual review.
+      python-minor-and-patch:
+        update-types:
+          - "minor"
+          - "patch"
+
+  # ─────────────────────────────────────────────────────────────
+  # GitHub Actions workflow versions (actions/checkout@v4, etc.)
+  # ─────────────────────────────────────────────────────────────
+  - package-ecosystem: "github-actions"
+    directory: "/"
+    schedule:
+      interval: "weekly"
+      day: "monday"
+    labels:
+      - "dependencies"
+      - "github-actions"
+    commit-message:
+      prefix: "ci"
+      include: "scope"
