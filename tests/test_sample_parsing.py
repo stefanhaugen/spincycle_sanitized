@@ -13,6 +13,7 @@ import math
 import pytest
 
 from spincycle_utils import (
+    _sanitize_sheet_name,
     classify_sample,
     clean_name,
     extract_cvs_conc,
@@ -21,7 +22,6 @@ from spincycle_utils import (
     extract_std_conc,
     flag_lloq_uloq,
     strip_rep_suffix,
-    _sanitize_sheet_name,
 )
 
 
@@ -47,9 +47,7 @@ class TestClassifySample:
     def test_blanks_classified_as_blank(self, name: str):
         assert classify_sample(name) == "Blank"
 
-    @pytest.mark.parametrize(
-        "name", ["Patient_001", "sample_A12", "extract_42", "QC_unknown"]
-    )
+    @pytest.mark.parametrize("name", ["Patient_001", "sample_A12", "extract_42", "QC_unknown"])
     def test_unknown_names_default_to_sample(self, name: str):
         assert classify_sample(name) == "Sample"
 

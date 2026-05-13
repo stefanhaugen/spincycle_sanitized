@@ -16,7 +16,6 @@ import re
 import numpy as np
 import pandas as pd
 
-
 # ─────────────────────────────────────────────────────────────────
 # Regex patterns for instrument-export sample names
 #
@@ -32,9 +31,7 @@ CVS_PATTERN = re.compile(r"(?:^|[_\-\s])cvs[_\-]?([\d\.]+)", re.IGNORECASE)
 
 # MassHunter-specific: spike concentration is the second numeric token
 # in patterns like cvs1_5ppm (index=1, spike=5).
-CVS_PATTERN_MASSHUNTER = re.compile(
-    r"(?:^|[_\-\s])cvs\d+[_\-]([\d\.]+)(?:\s*ppm)?", re.IGNORECASE
-)
+CVS_PATTERN_MASSHUNTER = re.compile(r"(?:^|[_\-\s])cvs\d+[_\-]([\d\.]+)(?:\s*ppm)?", re.IGNORECASE)
 
 # Dilution token: digits followed by xX before _/-/whitespace/end
 DIL_PATTERN = re.compile(r"(?<=[_\-])(\d+\.?\d*)[xX](?=[_\-\s]|$)", re.IGNORECASE)
@@ -46,6 +43,7 @@ _REP_SUFFIX_RE = re.compile(r"_rep\d+$")
 # ─────────────────────────────────────────────────────────────────
 # Sample classification + concentration extraction
 # ─────────────────────────────────────────────────────────────────
+
 
 def classify_sample(name: str) -> str:
     """Classify a sample by name into STD / CVS / Blank / Sample."""
@@ -112,6 +110,7 @@ def strip_rep_suffix(name) -> str:
 # LLOQ / ULOQ quantitation-limit flagging
 # ─────────────────────────────────────────────────────────────────
 
+
 def flag_lloq_uloq(value, lloq, uloq) -> str:
     """Return flag string for a measured value vs LLOQ/ULOQ bounds."""
     try:
@@ -128,6 +127,7 @@ def flag_lloq_uloq(value, lloq, uloq) -> str:
 # ─────────────────────────────────────────────────────────────────
 # Dropbox path normalization
 # ─────────────────────────────────────────────────────────────────
+
 
 def _normalize_dropbox_path(path: str) -> str:
     """Accept various Dropbox path formats and return /folder form.
@@ -156,6 +156,7 @@ def _normalize_dropbox_path(path: str) -> str:
 # ─────────────────────────────────────────────────────────────────
 # Excel sheet-name sanitization
 # ─────────────────────────────────────────────────────────────────
+
 
 def _sanitize_sheet_name(name: str, used: set | None = None) -> str:
     """Excel sheet names: <=31 chars, no `: \\ / ? * [ ]`, must be unique."""
