@@ -34,7 +34,7 @@ jobs:
       # Check out the repository contents into the runner
       # ─────────────────────────────────────────────────────────
       - name: Check out repository
-        uses: actions/checkout@v4
+        uses: actions/checkout@v6
 
       # ─────────────────────────────────────────────────────────
       # Install the requested Python version and cache pip downloads
