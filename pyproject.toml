@@ -1,0 +1,101 @@
+# Shared tooling configuration for SpinCycle.
+# Black, Ruff, and Pytest all read settings from here.
+
+[project]
+name = "spincycle"
+version = "0.1.0"
+description = "Offline-capable data cleaning and QC pipeline for Agilent Chemstation/MassHunter exports."
+readme = "README.md"
+license = { file = "LICENSE" }
+requires-python = ">=3.11"
+authors = [
+    { name = "Stefan Haugen" },
+]
+
+# ─────────────────────────────────────────────────────────────────
+# Black — code formatter
+# ─────────────────────────────────────────────────────────────────
+[tool.black]
+line-length = 100
+target-version = ["py311"]
+include = '\.pyi?$'
+extend-exclude = '''
+/(
+    \.venv
+  | python
+  | packages
+  | build
+  | dist
+)/
+'''
+
+# ─────────────────────────────────────────────────────────────────
+# Ruff — linter (replaces flake8, isort, pyupgrade, etc.)
+# ─────────────────────────────────────────────────────────────────
+[tool.ruff]
+line-length = 100
+target-version = "py311"
+extend-exclude = [
+    ".venv",
+    "python",
+    "packages",
+    "build",
+    "dist",
+]
+
+[tool.ruff.lint]
+# Conservative rule set — can be expanded later.
+# Full reference: https://docs.astral.sh/ruff/rules/
+select = [
+    "E",    # pycodestyle errors
+    "W",    # pycodestyle warnings
+    "F",    # pyflakes
+    "I",    # isort (import sorting)
+    "B",    # flake8-bugbear (likely bugs)
+    "C4",   # flake8-comprehensions
+    "UP",   # pyupgrade (modern Python syntax)
+    "SIM",  # flake8-simplify
+]
+ignore = [
+    "E501",  # line too long — black handles this
+    "B008",  # function call in default arg — common Streamlit pattern
+]
+
+[tool.ruff.lint.per-file-ignores]
+"tests/*" = ["F401", "F811"]  # allow unused imports/redefinitions in tests
+
+# ─────────────────────────────────────────────────────────────────
+# Pytest — test runner
+# ─────────────────────────────────────────────────────────────────
+[tool.pytest.ini_options]
+minversion = "7.0"
+testpaths = ["tests"]
+python_files = ["test_*.py"]
+python_classes = ["Test*"]
+python_functions = ["test_*"]
+addopts = [
+    "-ra",                  # show short summary for non-pass results
+    "--strict-markers",     # error on unknown @pytest.mark
+    "--strict-config",      # error on unknown config keys
+]
+
+# ─────────────────────────────────────────────────────────────────
+# Coverage — used by pytest-cov
+# ─────────────────────────────────────────────────────────────────
+[tool.coverage.run]
+source = ["."]
+omit = [
+    "tests/*",
+    "python/*",
+    "packages/*",
+    "bootstrap_pip.py",
+]
+
+[tool.coverage.report]
+show_missing = true
+skip_covered = false
+exclude_lines = [
+    "pragma: no cover",
+    "raise NotImplementedError",
+    "if __name__ == .__main__.:",
+]

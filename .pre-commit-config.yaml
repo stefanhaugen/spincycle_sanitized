@@ -1,0 +1,51 @@
+# Pre-commit hooks for SpinCycle
+# Install: pip install pre-commit && pre-commit install
+# Manual run on all files: pre-commit run --all-files
+# Docs: https://pre-commit.com/
+
+repos:
+  # ────────────────────────────────────────────────────────────
+  # Built-in housekeeping hooks
+  # ────────────────────────────────────────────────────────────
+  - repo: https://github.com/pre-commit/pre-commit-hooks
+    rev: v4.6.0
+    hooks:
+      - id: trailing-whitespace
+      - id: end-of-file-fixer
+      - id: check-yaml
+      - id: check-toml
+      - id: check-added-large-files
+        args: ['--maxkb=1000']
+      - id: check-merge-conflict
+      - id: check-case-conflict
+      - id: debug-statements
+      - id: mixed-line-ending
+        args: ['--fix=lf']
+
+  # ────────────────────────────────────────────────────────────
+  # Black — Python code formatter
+  # ────────────────────────────────────────────────────────────
+  - repo: https://github.com/psf/black
+    rev: 24.10.0
+    hooks:
+      - id: black
+        language_version: python3.11
+
+  # ────────────────────────────────────────────────────────────
+  # Ruff — Python linter (fast, replaces flake8/isort/pyupgrade)
+  # ────────────────────────────────────────────────────────────
+  - repo: https://github.com/astral-sh/ruff-pre-commit
+    rev: v0.7.4
+    hooks:
+      - id: ruff
+        args: [--fix, --exit-non-zero-on-fix]
+
+  # ────────────────────────────────────────────────────────────
+  # detect-secrets — scan for accidentally committed credentials
+  # ────────────────────────────────────────────────────────────
+  - repo: https://github.com/Yelp/detect-secrets
+    rev: v1.5.0
+    hooks:
+      - id: detect-secrets
+        args: ['--baseline', '.secrets.baseline']
+        exclude: package.lock.json|\.git/.*

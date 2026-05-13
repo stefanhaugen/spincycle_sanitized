@@ -1,0 +1,86 @@
+name: CI
+
+# ─────────────────────────────────────────────────────────────────
+# When does this workflow run?
+#   - Every push to main (the protected branch)
+#   - Every pull request targeting main
+#   - On demand, from the Actions tab (workflow_dispatch button)
+# ─────────────────────────────────────────────────────────────────
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+  workflow_dispatch:
+
+# Cancel in-progress runs of this workflow when a new commit is pushed
+# to the same PR / branch. Saves Actions minutes and gives faster feedback.
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  test:
+    name: Lint and test (Python ${{ matrix.python-version }})
+    runs-on: ubuntu-latest
+
+    strategy:
+      fail-fast: false
+      matrix:
+        python-version: ["3.11"]
+
+    steps:
+      # ─────────────────────────────────────────────────────────
+      # Check out the repository contents into the runner
+      # ─────────────────────────────────────────────────────────
+      - name: Check out repository
+        uses: actions/checkout@v4
+
+      # ─────────────────────────────────────────────────────────
+      # Install the requested Python version and cache pip downloads
+      # so subsequent runs don't re-download every package.
+      # ─────────────────────────────────────────────────────────
+      - name: Set up Python ${{ matrix.python-version }}
+        uses: actions/setup-python@v5
+        with:
+          python-version: ${{ matrix.python-version }}
+          cache: pip
+          cache-dependency-path: |
+            requirements.txt
+            requirements-dev.txt
+
+      # ─────────────────────────────────────────────────────────
+      # Install runtime + dev dependencies
+      # ─────────────────────────────────────────────────────────
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements-dev.txt
+
+      # ─────────────────────────────────────────────────────────
+      # Lint + format check via pre-commit
+      # Runs ALL hooks (black, ruff, detect-secrets, housekeeping)
+      # in non-modifying mode — fail if anything isn't formatted.
+      # ─────────────────────────────────────────────────────────
+      - name: Run pre-commit hooks
+        run: |
+          pre-commit run --all-files --show-diff-on-failure
+
+      # ─────────────────────────────────────────────────────────
+      # Run the test suite with coverage reporting
+      # ─────────────────────────────────────────────────────────
+      - name: Run pytest
+        run: |
+          pytest -v --cov=. --cov-report=term-missing --cov-report=xml
+
+      # ─────────────────────────────────────────────────────────
+      # Upload the coverage XML as a build artifact so you can
+      # download it from the Actions UI to inspect locally.
+      # ─────────────────────────────────────────────────────────
+      - name: Upload coverage artifact
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: coverage-${{ matrix.python-version }}
+          path: coverage.xml
+          retention-days: 14

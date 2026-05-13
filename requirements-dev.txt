@@ -1,0 +1,19 @@
+# Development dependencies for SpinCycle.
+# Install: pip install -r requirements-dev.txt
+# Includes everything in requirements.txt plus testing + linting tools.
+
+-r requirements.txt
+
+# ─────────────────────────────────────────────────────────────────
+# Testing
+# ─────────────────────────────────────────────────────────────────
+pytest>=7.4
+pytest-cov>=4.1
+
+# ─────────────────────────────────────────────────────────────────
+# Code quality
+# ─────────────────────────────────────────────────────────────────
+black>=24.10
+ruff>=0.7
+pre-commit>=3.7
+detect-secrets>=1.5
